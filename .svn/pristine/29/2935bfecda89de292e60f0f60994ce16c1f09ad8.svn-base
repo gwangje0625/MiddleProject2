@@ -1,0 +1,113 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt"%>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions"%>
+<c:set var="contextPath" value="${pageContext.request.contextPath}" />
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>나의 쇼핑 내역</title>
+    
+    <link rel="stylesheet" href="${contextPath}/resource/css/main.css">
+
+    <script>
+        function cancelOrder(orderNo) {
+            if (confirm('정말로 주문을 취소하시겠습니까?')) {
+                fetch('${contextPath}/orders?action=cancel', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: 'orderNo=' + encodeURIComponent(orderNo)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    if (data.success) {
+                        location.reload();
+                    }
+                })
+                .catch(error => {
+                    alert('주문 취소 중 오류가 발생했습니다.');
+                    console.error(error);
+                });
+            }
+        }
+    </script>
+
+</head>
+<body>
+<div class="body">
+   <%@include file="/Includes/headermenu.jsp" %>
+   <%@include file="/Includes/middlemenu.jsp" %>
+
+    <div class="tabs">
+        <ul>
+            <li>
+                <a href="${contextPath}/mypage?action=mypage"
+                   class="${param.action == 'mypage' ? 'active' : ''}">
+                    프로필
+                </a>
+            </li>
+            <li>
+                <a href="${contextPath}/orders"
+                   class="${pageContext.request.servletPath == '/orders' ? 'active' : ''}">
+                    나의 쇼핑
+                </a>
+            </li>
+            <li>
+                <a href="${contextPath}/mypage?action=meminfo"
+                   class="${param.action == 'meminfo' ? 'active' : ''}">
+                    설정
+                </a>
+            </li>
+        </ul>     
+    </div>
+
+    <!-- 주문 목록 확인 -->
+    <div class="order">
+        <div class="order-title">나의 쇼핑 내역</div>
+        <c:choose>
+            <c:when test="${not empty orderDetails}">
+                <c:set var="currentOrderNo" value="0" />
+                <c:set var="currentProdNo" value="0" />
+                <!-- 주문 목록 출력 -->
+                <c:forEach var="orderDetail" items="${orderDetails}" varStatus="status">
+                    <!-- 주문 상태가 '주문취소'가 아닌 항목만 출력 -->
+                    <c:if test="${orderDetail.ORDER_STAT != '주문취소'}">
+                        <!-- 같은 주문 번호, 상품 번호인지 확인 -->
+                        <c:if test="${currentOrderNo != orderDetail.ORDER_NO || currentProdNo != orderDetail.PROD_NO}">
+                            <c:set var="currentOrderNo" value="${orderDetail.ORDER_NO}" />
+                            <c:set var="currentProdNo" value="${orderDetail.PROD_NO}" />
+                            
+                            <!-- 주문 및 상품 정보를 한 번만 출력 -->
+                            <section class="order-item">
+                                <img src="${contextPath}/${orderDetail.PATH}" alt="제품 이미지">
+                                <div class="order-info">
+                                    <p><strong>${orderDetail.PROD_NAME}</strong> - ${orderDetail.ORDER_CNT}개</p>
+                                    <p>${orderDetail.ORDER_PRICE}원</p>
+                                    <h3>주문 번호: ${orderDetail.ORDER_NO}</h3>
+                                    <p>결제 완료일: 
+                                        <fmt:formatDate value="${orderDetail.ORDER_DATE}" pattern="yyyy-MM-dd HH:mm:ss"/>
+                                    </p>
+                                    <p>주문 상태: ${orderDetail.ORDER_STAT}</p>
+                                </div>
+                                <div class="order-actions">
+                                    <button onclick="cancelOrder(${orderDetail.ORDER_NO})">주문 취소</button>
+                                </div>
+                            </section>
+                        </c:if>
+                    </c:if>
+                </c:forEach>
+            </c:when>
+            <c:otherwise>
+                <p>주문 내역이 없습니다.</p>
+            </c:otherwise>
+        </c:choose>
+    </div>
+   <%@include file="/Includes/footer.jsp" %>
+</div>
+</body>
+</html>
